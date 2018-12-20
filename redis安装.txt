@@ -1,0 +1,7 @@
+为了屏蔽不同的安装环境给安装造成的影响，本示例中redis的安装使用docker
+1、安装docker环境（略）
+2、执行docker pull amd64/redis:latest  下载最新redis 镜像
+(我使用的机器cpu是amd64架构的，redis:latest 默认提供的是ARMv7架构)
+3、创建docker-compose.yml文件来启动redis image
+4、执行docker-compose up -d 启动redis
+5、执行docker-compose down 关闭redis

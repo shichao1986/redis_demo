@@ -1,0 +1,12 @@
+redis:
+  container_name: redis
+  image: amd64/redis:latest
+  ports:
+   # docker file中将6379 expose给其他使用容器连接redis的服务，
+   # 为使外部服务能够通过宿主机访问redis，这里使用16379与6379绑定
+    - "16379:6379"
+  volumes:
+    - /home/cyuser/redis:/usr/local/etc
+    - /srv/docker/data/redis:/data
+  restart: always
+  command: redis-server --appendonly yes /usr/local/etc/redis.conf
