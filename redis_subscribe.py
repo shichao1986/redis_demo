@@ -39,17 +39,33 @@ import redis
 from redis_publisher import REDIS_PORT, REDIS_HOST
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
-ps = r.pubsub()
-#
-#
-ps.psubscribe('__key*@0__:*')
+expire_event = r.pubsub()
+expire_event.psubscribe('__key*@0__:*')
 
-def loop():
-    for msg in ps.listen():
-        print('receive msg:{}'.format(msg))
+def time_expire():
+    for msg in expire_event.listen():
+        print('receive time_expire msg:{}'.format(msg))
+
+def queue_arive(list_queue):
+    count = 0
+    while True:
+        # timeout = 0 阻塞
+        q, msg = r.brpop(list_queue, timeout=0)
+        count += 1
+        print('{},{},{}'.format(list_queue,msg,count))
+        if list_queue == 'list2':
+            # 转发，round robin 方式
+            forward_list = 'list2_{}'.format(count%5 + 1)
+            r.lpush(forward_list, msg)
 
 def main():
-    threading.Thread(target=loop, daemon=True).start()
+    threading.Thread(target=time_expire, daemon=True).start()
+    threading.Thread(target=queue_arive, daemon=True, name='list2', args=('list2', )).start()
+    threading.Thread(target=queue_arive, daemon=True, name='list2_1', args=('list2_1',)).start()
+    threading.Thread(target=queue_arive, daemon=True, name='list2_2', args=('list2_2',)).start()
+    threading.Thread(target=queue_arive, daemon=True, name='list2_3', args=('list2_3',)).start()
+    threading.Thread(target=queue_arive, daemon=True, name='list2_4', args=('list2_4',)).start()
+    threading.Thread(target=queue_arive, daemon=True, name='list2_5', args=('list2_5',)).start()
 
     while True:
         time.sleep(1)

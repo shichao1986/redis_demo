@@ -6,7 +6,6 @@ redis:
    # 为使外部服务能够通过宿主机访问redis，这里使用16379与6379绑定
     - "16379:6379"
   volumes:
-    - /home/cyuser/redis:/usr/local/etc
     - /srv/docker/data/redis:/data
   restart: always
-  command: redis-server --appendonly yes /usr/local/etc/redis.conf
+  command: redis-server --appendonly yes --notify-keyspace-events Ex
