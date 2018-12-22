@@ -239,10 +239,107 @@ def List_examples(r, r1):
         r.lpush('list2', 99)
 
     # 提供两个队列的原子操作，例如将准备队列中ok的任务，放入等待队列已等待运行
-    r.rpoplpush('list1', 'list2')
+    # 本函数执行成功时返回被pop出的值，若src list中没有没有值则返回None
+    # 特别的，当src 与 dst 相同时， 实际上是一种环形队列的实现，client对该队列
+    # 的pop和push动作一起执行，防止了pop后client挂掉导致队列变短的问题，使用
+    # rpoplpush对环形队列进行遍历时无法对队列的内容进行修改
+    ret = r.rpoplpush('list1', 'list2')
+    p('rpoplpush list1 list2', ret)
+    ret = r.rpoplpush('list1', 'list2')
+    p('rpoplpush list1 list2', ret)
 
     # 函数brpoplpush 为rpoplpush的阻塞版，意为一直等待src list有元素可以push入dst list
     # 该阻塞可用于消息的指定分发，弥补了pub/sub使用广播方式的不足，例子剑redis_subscribe.py
+    pass
+
+def Set_examples(r, r1):
+    print(r.delete('set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7'))
+
+    # sadd 返回成功添加入集合中的元素的个数
+    print(r.sadd('set1', 'abc'))
+    print(r.sadd('set1', 'ddd', 123, 4, 5, 6, 7, 8, 9))
+    print(r.sadd('set1', 123))
+    print(r.scard('set1'))
+
+    print(r.sadd('set2', 'abc'))
+    print(r.sadd('set2', 'ddd', 123, 4, 5, 6))
+    print(r.sadd('set2', 123))
+    print(r.scard('set2'))
+
+    print(r.sadd('set3', 8))
+
+    # sdiff 返回在第一个集合中，但是不再后续所有集合中的元素组成的集合
+    # 即差集运算
+    print(r.sdiff(['set1', 'set2']))
+    print(r.sdiff('set1', 'set2', 'set3'))
+
+    # sdiffstore 将sdiff 函数返回的集合存储到指定的集合中去
+    # 返回值为将要存入的元素的数量,该返回值实际上为
+    # scard(sidff(keys))，并不是真正存入的数量
+    print(r.sdiffstore('set4', 'set1', 'set2', 'set3'))
+    print(r.sdiffstore('set4', 'set1', 'set2', 'set3'))
+    print(r.sdiffstore('set4', 'set1', 'set2', 'set3'))
+    print(r.sdiffstore('set4', 'set1', 'set2', 'set3'))
+    print(r.sdiffstore('set4', 'set1', 'set2', 'set3'))
+
+    # 返回交集
+    print(r.sinter('set1', 'set2'))
+    print(r.sinter('set1', 'set2', 'set3'))
+
+    # 将交集插入指定集合，返回值为交集的元素个数
+    print(r.sinterstore('set5', 'set1', 'set2'))
+    print(r.sinterstore('set5', 'set1', 'set2'))
+
+    # 返回并集
+    print(r.sunion('set2', 'set3'))
+
+    # 将并集插入指定集合，返回值为并集的元素个数
+    print(r.sunionstore('set6', 'set2', 'set3'))
+    print(r.sunionstore('set6', 'set2', 'set3'))
+
+    print(r.sismember('set1', 'abc'))
+    print(r.sismember('set1', 'abcc'))
+    print(r.smembers('set1'))
+
+    # 移除集合中所有的指定value的元素，返回值为成功移除的元素个数
+    print(r.srem('set1', 'kkk'))
+    print(r.srem('set1', 'ddd'))
+    print(r.srem('set1', 'abc', 123, '000'))
+    print(r.smembers('set1'))
+    print(r.smembers('set2'))
+
+    # 将集合src 中的 val  添加入集合 dst
+    # src 中不存在val 返回false
+    # src 中存在val ，dst 不存在 返回false
+    # src 中存在val ，dst 存在 返回true  （无论dst中是否已经有了 val）
+    print(r.smove('set1', 'set2', 'aaa'))
+    print(r.smove('set1', 'set2', 5))
+    print(r.smove('set1', 'set2', 7))
+    print(r.smove('set1', 'set7', 7))
+    print(r.smembers('set2'))
+    print(r.smembers('set7'))
+
+    # 获取集合中的指定数量的随机元素
+    print(r.srandmember('set1', number=0))
+    print(r.srandmember('set1', number=1))
+    print(r.srandmember('set1', number=3))
+    print(r.srandmember('set1', number=10))
+
+    # 随机pop出指定集合中的 number个元素
+    print(r.spop('set1', count=0))
+    print(r.smembers('set1'))
+    print(r.spop('set1', count=1))
+    print(r.smembers('set1'))
+    print(r.spop('set1', count=3))
+    print(r.smembers('set1'))
+    print(r.spop('set1', count=5))
+    print(r.smembers('set1'))
+
+    # sscan sscan_iter 与 hscan hscan_iter的用法类似,不再介绍
+
+    pass
+
+def Zset_examplse(r, r1):
     pass
 
 def main(argv=None):
@@ -261,7 +358,9 @@ def main(argv=None):
 
     # Hash_examples(r, r1)
 
-    List_examples(r, r1)
+    # List_examples(r, r1)
+
+    Set_examples(r, r1)
 
 if __name__ == '__main__':
     sys.exit(main(argv=None))
