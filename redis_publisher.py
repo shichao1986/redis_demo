@@ -339,7 +339,132 @@ def Set_examples(r, r1):
 
     pass
 
+# 有序集合经常用于排名系统
+# bzminpop可以扩展成select功能
 def Zset_examplse(r, r1):
+    r.delete('zset1','zset2','zset3', 'zset4')
+    # zadd 创建 和 更新 有序集合中的元素，返回值为添加的元素的个数
+    zdict = dict(a=1,b=2,c=3)
+    print(r.zadd("zset1", zdict))
+    zdict = dict(a=1, b=4, c=3, d=5)
+    print(r.zadd("zset1", zdict))
+
+    # nx=True 时仅创建不更新，重复的元素忽略
+    zdict = dict(a=1,b=2,c=3)
+    print(r.zadd("zset2", zdict, nx=True))
+    zdict = dict(a=1, b=4, c=3, d=5)
+    print(r.zadd("zset2", zdict, nx=True))
+
+    # xx=True 时仅更新不创建，不存在的元素忽略
+    zdict = dict(a=1, b=2, c=3)
+    print(r.zadd("zset3", zdict, xx=True))
+    zdict = dict(a=1, b=2, c=3)
+    print(r.zadd("zset3", zdict))
+    zdict = dict(a=1, b=4, c=3, d=5)
+    print(r.zadd("zset3", zdict, xx=True))
+
+    # nx=True xx=True， 既不创建，也不更新，无实际意义
+    zdict = dict(a=2, b=12, c=13, e=50)
+    print(r.zadd("zset3", zdict, xx=True))
+    print(r.zrange('zset3', 0, -1))
+
+    # ch=True 返回值此时为发生变化的元素，包括新创建的元素，和被更新的元素
+    zdict = dict(a=2, b=4, c=13, e=50)
+    print(r.zadd("zset3", zdict, ch=True))
+    print(r.zrange('zset3', 0, -1))
+
+    # incr=True zdict中只能包含一对，且返回值变为key增加过val后的最新结果
+    # 若增加的key值不存在，则为在zset中创建key/val
+    # 注意：此时设置nx 和 xx标志可能会导致异常的发生
+    zdict = dict(a=5)
+    print(r.zadd("zset3", zdict, ch=True, incr=True, xx=True))
+    print(r.zrange('zset3', 0, -1))
+    zdict = dict(dd=5)
+    print(r.zadd("zset3", zdict, ch=True, incr=True))
+
+    # 获取有序集中的指定区间的元素， withscores是否返回score desc是否降序，默认为升序
+    # score_cast_func 为分数的转换格式，默认为float
+    print(r.zrange('zset3', 0, -1, withscores=True, desc=False, score_cast_func=float))
+
+    # score 必须为一个可以转换成float类型的数
+    zdict=dict(a=1, b=2, c='3', d='4.44')
+    zdict['1'] = 1
+    print(r.zadd('zset4', zdict))
+    print(r.zcard('zset4'))
+    print(r.zcount('zset4', 0, 3))
+
+    # 返回增加过后的值
+    print(r.zincrby('zset4', '0.11', 'a'))
+    # 不存在的值会创建，并以amount为初值
+    print(r.zincrby('zset4', '0.11', 'k'))
+
+    # 将keys的交集合并到dst有序集中
+    print(r.zinterstore('zset5', ['zset3','zset4'], aggregate='MIN'))
+
+    # 将keys的并集合并到dst有序集中
+    print(r.zunionstore('zset6', ['zset3', 'zset4'], aggregate='SUM'))
+
+    # 按照字典（英文字母字典排序）序列限制min和max区间，
+    # 例如本例中的a和d即为字典区间中的a字母和d字母确定的区间
+    # 然后再从有序集合zset3中的第一个元素的名称开始判断，若
+    # 有序集合的第一个元素的名称处在该区间，则计数加1，再判断
+    # 第二个，处在改区间继续加1，直到第一个不处于该区间的出现
+    # 返回计数结果。换言之，如果有序序列中的第一个元素名称就不
+    # 处于该区间，则直接返回0，不会再继续后续的判断
+    print(r.zlexcount('zset3', min='[a', max='[c'))
+    print(r.zrange('zset6', 0, -1, withscores=True, desc=False, score_cast_func=float))
+
+    # 与zrange 类似，区间选区时使用score
+    print(r.zrangebyscore('zset6', 0, 100, withscores=True, score_cast_func=float))
+    print(r.zrevrangebyscore('zset6', 100, 0, withscores=True, score_cast_func=float))
+
+    # 获取指定val的排名
+    print(r.zrank('zset6', 'dd'))
+    # 获取指定val的反向排名，即倒数名次
+    print(r.zrevrank('zset6', 'dd'))
+
+    # 删除有序集中的vals，返回成功删除的val的个数
+    print(r.zrem('zset6', '11', '22', 'cc'))
+    print(r.zrem('zset6', '11','22', 'cc', 'a'))
+
+    # 按照字典序获取指定区间的元素名称，可以通过start 和 num 对返回的结果进行切片，再返回经过切片后的结果
+    print(r.zrangebylex('zset6', '[a', '[z'))
+
+    # 此时的有序集中的val的顺序为 [b'k', b'1', b'd', b'dd', b'b', b'a', b'c', b'e']
+    # 但是下述例子返回的是8，而不是2，所以要确认zlexcount函数的执行逻辑需要看redis源码
+    print(r.zlexcount('zset6', '[a', '[z'))
+    print(r.zrangebylex('zset6', '[a', '[z', start=1, num=2))
+    print(r.zrangebylex('zset6', '[a', '[z', start=10, num=1))
+
+    # zrevrangebylex 与 zrangebylex 用法类似，是字典排序的一个倒序过滤
+    # 返回的结果顺序与 zrangebylex 正好相反
+    print(r.zrevrangebylex('zset6', '[z', '[a'))
+    print(r.zrevrangebylex('zset6', '[z', '[a', start=1, num=2))
+    print(r.zrevrangebylex('zset6', '[z', '[a', start=10, num=1))
+
+    # pop 出给定有序集合中最大或最小的count个元素
+    print(r.zpopmax('zset6'))
+    print(r.zpopmin('zset6'))
+    print(r.zpopmax('zset6', count=2))
+    print(r.zpopmax('zset6', count=20))
+    print(r.zrange('zset6', 0, -1, withscores=True, desc=False, score_cast_func=float))
+
+    # 按照keys中的有序集的从左到右的顺序pop出第一个非空的元素
+    # 返回值为（key， val， score）
+    # 当timeout参数设置为0时为阻塞等待
+    # 显而易见的是该方法的使用场景类似与select函数，多个有序集为不同的fd
+    # 有序集中的val为信息，score可以用于记录到达顺序
+    print(r.bzpopmax(['zset5','zset4']))
+    print(r.bzpopmax(['zset5', 'zset4']))
+    print(r.bzpopmax(['zset5', 'zset4']))
+    print(r.bzpopmax(['zset5', 'zset4']))
+    print(r.bzpopmax(['zset5', 'zset4']))
+    print(r.bzpopmax(['zset5', 'zset4']))
+    print(r.bzpopmax(['zset5', 'zset4']))
+    print(r.bzpopmax(['zset5', 'zset4']))
+
+    # bzmopmin 用法同bzpopmax，返回的为最小的值
+
     pass
 
 def main(argv=None):
@@ -360,7 +485,9 @@ def main(argv=None):
 
     # List_examples(r, r1)
 
-    Set_examples(r, r1)
+    # Set_examples(r, r1)
+
+    Zset_examplse(r, r1)
 
 if __name__ == '__main__':
     sys.exit(main(argv=None))
