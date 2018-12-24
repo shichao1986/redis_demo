@@ -11,9 +11,15 @@ pool = None
 
 p = lambda msg,a:print('{}:{}'.format(msg, a))
 
+# 分布式锁一半和pipeline 事务共同使用
 def lock(r, name, value):
     while not r.set(name, value, nx=True):
         pass
+    # 设定锁的超时时间，防止crush导致其他线程卡死
+    # 同时使用pipeline watch 监控锁的改变，防止
+    # 自身处理过慢，导致锁自动过期后与其他线程
+    # 共同操作
+    r.setex(name=name, time=20, value=value)
 
 def unlock(r, name):
     r.delete(name)
@@ -472,6 +478,50 @@ def Zset_examplse(r, r1):
 
     pass
 
+# 事务
+def Pipeline_examples(r, r1):
+    # 初始化分布式锁,锁主共享资源
+    lock_init(r, 'pipe_lock')
+    r.set('pipe', 100)
+    with r.pipeline(transaction=True) as p:
+        try:
+            lock(r, 'pipe_lock', 1)
+            # 用锁锁住共享资源
+            # watch仅需要监控锁即可
+            # 共享资源的操作全部用pipeline的事务实现
+            # 如果锁被改动，则放弃事务操作
+            # 事务操作本身具有原子性，在事务之前加锁是
+            # 为了保证参与事务中的共享资源的数据是最新的
+            p.watch('pipe_lock')
+            p.multi()
+            p.decr('pipe', amount=1)
+            p.decr('pipe', amount=2)
+            p.decr('pipe', amount=3)
+            ret = ''
+            ret = p.execute()
+        except Exception as e:
+            # 锁被篡改，取消事务
+            print(e)
+            p.unwatch()
+        finally:
+            unlock(r, 'pipe_lock')
+            print(ret)
+            # 事务执行成功后，watch自动失效
+
+    pass
+
+# 批处理
+def Pipeline_examples2(r, r1):
+    with r.pipeline(transaction=False) as p:
+        p.lpush('pipe_list1',1)
+        p.lpush('pipe_list2', 1)
+        p.lpush('pipe_list3', 1)
+        p.lpush('pipe_list4', 1)
+        p.lpush('pipe_list5', 1)
+        p.lpush('pipe_list6', 1)
+        ret = p.execute()
+        print(ret)
+
 def main(argv=None):
     if not argv:
         argv = sys.argv
@@ -492,7 +542,11 @@ def main(argv=None):
 
     # Set_examples(r, r1)
 
-    Zset_examplse(r, r1)
+    # Zset_examplse(r, r1)
+
+    Pipeline_examples(r, r1)
+
+    Pipeline_examples2(r, r1)
 
 if __name__ == '__main__':
     sys.exit(main(argv=None))
