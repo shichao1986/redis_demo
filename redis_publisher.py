@@ -405,14 +405,19 @@ def Zset_examplse(r, r1):
     print(r.zunionstore('zset6', ['zset3', 'zset4'], aggregate='SUM'))
 
     # 按照字典（英文字母字典排序）序列限制min和max区间，
-    # 例如本例中的a和d即为字典区间中的a字母和d字母确定的区间
-    # 然后再从有序集合zset3中的第一个元素的名称开始判断，若
-    # 有序集合的第一个元素的名称处在该区间，则计数加1，再判断
-    # 第二个，处在改区间继续加1，直到第一个不处于该区间的出现
-    # 返回计数结果。换言之，如果有序序列中的第一个元素名称就不
-    # 处于该区间，则直接返回0，不会再继续后续的判断
-    print(r.zlexcount('zset3', min='[a', max='[c'))
+    # 注意使用字典序列返回区间的所有函数的使用隐含前提
+    # 是该有序集合内的所有元素的分数相同，在有序集合中
+    # 相同分数的元素之间的顺序是通过字典序排列的，比如
+    # c=10，再插入a=10，a的顺序会排列在a之前，所以字典序
+    # 确定区间的函数都基于这个前置条件，查找时从有序集中
+    # 的第一个元素开始，依次和max进行比较，从最后一个元素
+    # 开始，依次和min进行比较，确定两边边界后返回元素的数量
+    # 所以对于分数不相同的有序集合使用字典序相关的所有函数
+    # 都是不恰当的
+    print('zlexcount test')
     print(r.zrange('zset6', 0, -1, withscores=True, desc=False, score_cast_func=float))
+    print(r.zlexcount('zset6', min='[f', max='[k'))
+
 
     # 与zrange 类似，区间选区时使用score
     print(r.zrangebyscore('zset6', 0, 100, withscores=True, score_cast_func=float))
