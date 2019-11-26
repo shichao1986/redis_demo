@@ -120,6 +120,17 @@ def String_examples(r, r1):
     id = r.incr('identifiers_1')
     p('identifiers_1', id)
 
+    r.set('ex_test', 1, ex=30)
+
+    # 更新redis中的值的内容不会影响之前设定的超时时间
+    # for i in range(20):
+    #     r.incr('ex_test', 1)
+    #     time.sleep(1)
+    # r.set('ex_test', 1, ex=30)
+
+    print(r.get('testtttt'))
+    r.set('sss:sss:ddd/222', 222)
+
 def Hash_examples(r, r1):
     r.hset('h_dict1', 'key1', '123')
     r.hset('h_dict1', 'key2', '444')
@@ -534,7 +545,7 @@ def main(argv=None):
 
     r1 = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=1)
 
-    # String_examples(r, r1)
+    String_examples(r, r1)
 
     # Hash_examples(r, r1)
 
@@ -544,9 +555,9 @@ def main(argv=None):
 
     # Zset_examplse(r, r1)
 
-    Pipeline_examples(r, r1)
-
-    Pipeline_examples2(r, r1)
+    # Pipeline_examples(r, r1)
+    #
+    # Pipeline_examples2(r, r1)
 
 if __name__ == '__main__':
     sys.exit(main(argv=None))
